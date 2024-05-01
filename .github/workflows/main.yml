@@ -23,4 +23,4 @@ jobs:
         shell: bash
         run: npm publish --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
