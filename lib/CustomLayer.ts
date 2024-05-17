@@ -36,7 +36,7 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   // Mapbox members
   id: string;
   private tileSource: mapboxgl.AnySourceImpl | null;
-  private sourceId: string;
+  public readonly sourceId: string;
   type: "custom";
   private tileJson: mapboxgl.RasterSource;
   // Custom data

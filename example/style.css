@@ -32,8 +32,21 @@ h1 {
 }
 
 #map {
+  position: relative;
   width: 720px;
   height: 480px;
   background-color: black;
   margin: auto;
+}
+
+#divider {
+  --left: 0px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--left);
+  height: 100%;
+  width: 3px;
+  background-color: red;
+  z-index: 1;
 }

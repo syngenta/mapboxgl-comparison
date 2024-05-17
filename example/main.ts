@@ -12,7 +12,9 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <input id="offset" name="offset" type="range" min="0" max="1" step="0.01" />
       <label for="offset">Offset</label>
     </div>
-    <div id="map" />
+    <div id="map">
+      <div id="divider" />
+    </div>
   </div>
 `;
 
@@ -46,11 +48,16 @@ map.once("load", () => {
 
 // Input range
 const input = document.querySelector("#offset");
+const divider: HTMLElement | null = document.querySelector("#divider");
 input?.addEventListener("input", (event) => {
   const value = (event.target as any).value as number;
-  const width = map.getContainer().getBoundingClientRect().width * value;
+  const width = Math.max(
+    0,
+    map.getContainer().getBoundingClientRect().width * value - 3
+  );
 
   layer.updateData({ offset: width });
+  divider?.style.setProperty("--left", `${width}px`);
 
   map.triggerRepaint();
 });
