@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import "./style.css";
-import { ComparisonLayer, render, setupLayer } from "../lib/CustomLayer";
+import { ComparisonLayer } from "../lib/CustomLayer";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoidmluaWNpdXNjYXJyYSIsImEiOiJja2oxZG50bG4yeGl6MnZyeGJ4M2cwOGt5In0.WF4Lrt_ImpReZHCxLQQ9Rw";
@@ -28,17 +28,15 @@ const map = new mapboxgl.Map({
 
 let data = {
   offset: 500,
-  devicePixelRatio: window.devicePixelRatio,
 };
 
 let layer = new ComparisonLayer(
   "layer01",
+  "source01",
   {
     type: "raster",
     tiles: ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
   },
-  setupLayer,
-  render,
   data
 );
 
@@ -50,15 +48,9 @@ map.once("load", () => {
 const input = document.querySelector("#offset");
 input?.addEventListener("input", (event) => {
   const value = (event.target as any).value as number;
-  console.log(value);
   const width = map.getContainer().getBoundingClientRect().width * value;
 
-  data.offset = width;
-  map.triggerRepaint();
-});
+  layer.updateData({ offset: width });
 
-// Device pixel ratio
-const resolution = `(resolution: ${window.devicePixelRatio}dppx)`;
-matchMedia(resolution).addEventListener("change", () => {
-  data.devicePixelRatio = window.devicePixelRatio;
+  map.triggerRepaint();
 });

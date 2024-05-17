@@ -27,41 +27,41 @@ interface ComparisonLayerProgram extends WebGLProgram {
 
 type ComparisonLayerData = {
   offset: number;
-  devicePixelRatio: number;
 };
 
 export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   // References
-  map: mapboxgl.Map | null;
-  gl: WebGLRenderingContext | null;
+  private map: mapboxgl.Map | null;
+  protected gl: WebGLRenderingContext | null;
   // Mapbox members
   id: string;
-  tileSource: mapboxgl.AnySourceImpl | null;
-  source: string;
+  private tileSource: mapboxgl.AnySourceImpl | null;
+  private sourceId: string;
   type: "custom";
-  tileJson: mapboxgl.RasterSource;
+  private tileJson: mapboxgl.RasterSource;
   // Custom data
-  program: ComparisonLayerProgram | null;
-  sourceCache: any;
-  data: ComparisonLayerData;
+  private program: ComparisonLayerProgram | null;
+  private sourceCache: any;
+  private data: ComparisonLayerData;
   // Callbacks
-  onAddCallback: onAddCallback;
-  renderCallback: onRenderCallback;
-  preRenderCallback?: () => any;
+  private onAddCallback: onAddCallback;
+  private renderCallback: onRenderCallback;
+  private preRenderCallback?: () => any;
 
   constructor(
     id: string,
+    sourceId: string,
     tileJson: mapboxgl.RasterSource,
-    onAddCallback: onAddCallback,
-    renderCallback: onRenderCallback,
     data: ComparisonLayerData,
+    onAddCallback: onAddCallback = setupLayer,
+    renderCallback: onRenderCallback = render,
     preRenderCallback?: () => any
   ) {
     this.map = null;
     this.gl = null;
     this.id = id;
+    this.sourceId = sourceId;
     this.tileSource = null;
-    this.source = this.id + "Source";
     this.type = "custom";
     this.tileJson = tileJson;
     this.program = null;
@@ -77,16 +77,16 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
     map.on("move", this.move.bind(this));
     map.on("zoom", this.zoom.bind(this));
 
-    map.addSource(this.source, this.tileJson);
-    this.tileSource = this.map.getSource(this.source);
+    map.addSource(this.sourceId, this.tileJson);
+    this.tileSource = this.map.getSource(this.sourceId);
     //@ts-ignore
     this.tileSource.on("data", this.onData.bind(this));
     //@ts-ignore
-    this.sourceCache = this.map.style._sourceCaches[`other:${this.source}`];
+    this.sourceCache = this.map.style._sourceCaches[`other:${this.sourceId}`];
 
     // !IMPORTANT! hack to make mapbox mark the sourceCache as 'used' so it will initialise tiles.
     //@ts-ignore
-    this.map.style._layers[this.id].source = this.source;
+    this.map.style._layers[this.id].source = this.sourceId;
     //@ts-ignore
     if (this.onAddCallback) {
       this.program = this.onAddCallback(map, gl, this.data);
@@ -106,6 +106,10 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   updateTiles() {
     //@ts-ignore
     this.sourceCache.update(this.map.painter.transform);
+  }
+
+  updateData(data: ComparisonLayerData) {
+    this.data = data;
   }
 
   prerender(gl: WebGLRenderingContext, matrix: number[]) {
@@ -183,7 +187,7 @@ export function setupLayer(
   // Initialize data
   gl.useProgram(program);
   gl.uniform1f(program.uOffset, data.offset);
-  gl.uniform1f(program.uDevicePixelRatio, data.devicePixelRatio);
+  gl.uniform1f(program.uDevicePixelRatio, window.devicePixelRatio);
 
   return program;
 }
@@ -197,7 +201,7 @@ export function render(
 ) {
   gl.useProgram(program);
   gl.uniform1f(program.uOffset, data.offset);
-  gl.uniform1f(program.uDevicePixelRatio, data.devicePixelRatio);
+  gl.uniform1f(program.uDevicePixelRatio, window.devicePixelRatio);
   tiles.forEach((tile) => {
     if (!tile.texture) return;
     gl.activeTexture(gl.TEXTURE0);
