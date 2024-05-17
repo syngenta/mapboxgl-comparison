@@ -9,8 +9,10 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
     <h1>Mapboxgl Comparison</h1>
     <div>
-      <input id="offset" name="offset" type="range" min="0" max="1" step="0.01" />
-      <label for="offset">Offset</label>
+      <input id="offsetX" name="offset" type="range" min="0" max="1" step="0.01" />
+      <label for="offsetX">OffsetX</label>
+      <input id="offsetY" name="offset" type="range" min="0" max="1" step="0.01" />
+      <label for="offsetY">OffsetY</label>
     </div>
     <div id="map">
       <div id="divider" />
@@ -29,7 +31,8 @@ const map = new mapboxgl.Map({
 });
 
 let data = {
-  offset: 500,
+  offsetX: 500,
+  offsetY: 0,
 };
 
 let layer = new ComparisonLayer(
@@ -47,17 +50,34 @@ map.once("load", () => {
 });
 
 // Input range
-const input = document.querySelector("#offset");
+const inputX = document.querySelector("#offsetX");
+const inputY = document.querySelector("#offsetY");
 const divider: HTMLElement | null = document.querySelector("#divider");
-input?.addEventListener("input", (event) => {
+inputX?.addEventListener("input", (event) => {
   const value = (event.target as any).value as number;
   const width = Math.max(
     0,
     map.getContainer().getBoundingClientRect().width * value - 3
   );
 
-  layer.updateData({ offset: width });
+  data = { offsetX: width, offsetY: data.offsetY };
+
+  layer.updateData(data);
   divider?.style.setProperty("--left", `${width}px`);
+
+  map.triggerRepaint();
+});
+
+inputY?.addEventListener("input", (event) => {
+  const value = (event.target as any).value as number;
+  const height = Math.max(
+    0,
+    map.getContainer().getBoundingClientRect().height * value
+  );
+
+  data = { offsetX: data.offsetX, offsetY: height };
+
+  layer.updateData(data);
 
   map.triggerRepaint();
 });

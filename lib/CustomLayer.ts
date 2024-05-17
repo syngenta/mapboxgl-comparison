@@ -20,13 +20,15 @@ interface ComparisonLayerProgram extends WebGLProgram {
   aPos: number;
   uMatrix: WebGLUniformLocation | null;
   uTexture: WebGLUniformLocation | null;
-  uOffset: WebGLUniformLocation | null;
+  uOffsetX: WebGLUniformLocation | null;
+  uOffsetY: WebGLUniformLocation | null;
   uDevicePixelRatio: WebGLUniformLocation | null;
   vertexBuffer: WebGLBuffer | null;
 }
 
 type ComparisonLayerData = {
-  offset: number;
+  offsetX: number;
+  offsetY: number;
 };
 
 export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
@@ -172,7 +174,8 @@ export function setupLayer(
   program.aPos = gl.getAttribLocation(program, "aPos");
   program.uMatrix = gl.getUniformLocation(program, "uMatrix");
   program.uTexture = gl.getUniformLocation(program, "uTexture");
-  program.uOffset = gl.getUniformLocation(program, "uOffset");
+  program.uOffsetX = gl.getUniformLocation(program, "uOffsetX");
+  program.uOffsetY = gl.getUniformLocation(program, "uOffsetY");
   program.uDevicePixelRatio = gl.getUniformLocation(
     program,
     "uDevicePixelRatio"
@@ -186,7 +189,8 @@ export function setupLayer(
 
   // Initialize data
   gl.useProgram(program);
-  gl.uniform1f(program.uOffset, data.offset);
+  gl.uniform1f(program.uOffsetX, data.offsetX);
+  gl.uniform1f(program.uOffsetY, data.offsetY);
   gl.uniform1f(program.uDevicePixelRatio, window.devicePixelRatio);
 
   return program;
@@ -200,7 +204,8 @@ export function render(
   data: ComparisonLayerData
 ) {
   gl.useProgram(program);
-  gl.uniform1f(program.uOffset, data.offset);
+  gl.uniform1f(program.uOffsetX, data.offsetX);
+  gl.uniform1f(program.uOffsetY, data.offsetY);
   gl.uniform1f(program.uDevicePixelRatio, window.devicePixelRatio);
   tiles.forEach((tile) => {
     if (!tile.texture) return;
