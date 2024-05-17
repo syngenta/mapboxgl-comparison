@@ -13,7 +13,7 @@ export default `
         canvasCoord.x = canvasCoord.x / uDevicePixelRatio;
         canvasCoord.y = canvasCoord.y / uDevicePixelRatio;
 
-        if (canvasCoord.x > vOffsetX || canvasCoord.y > vOffsetY) {
+        if (canvasCoord.x > vOffsetX || canvasCoord.y < vOffsetY) {
             discard;
         }
 
