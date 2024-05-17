@@ -4,6 +4,8 @@ The project aims to facilitate creating comparison _raster layer_ maps. This is 
 
 This project is unopinated on how and if you want to change the comparison _offset_, check out the examples.
 
+![](https://github.com/vinicarra/mapboxgl-comparison/blob/master/example/demo.gif)
+
 ## Why should I pick this?
 
 The most famous comparison layer library for mapbox is https://github.com/mapbox/mapbox-gl-compare. It's a great and easy-to-use library to setup and compare two completely different maps.
