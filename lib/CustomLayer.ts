@@ -13,7 +13,9 @@ type onRenderCallback = (
   _: number[],
   tiles: any[],
   program: ComparisonLayerProgram,
-  data: ComparisonLayerData
+  data: ComparisonLayerData,
+  width: number,
+  height: number
 ) => void;
 
 interface ComparisonLayerProgram extends WebGLProgram {
@@ -45,6 +47,9 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   private program: ComparisonLayerProgram | null;
   private sourceCache: any;
   private data: ComparisonLayerData;
+  private mapWidth = 0;
+  private mapHeight = 0;
+  private observer: ResizeObserver | null = null;
   // Callbacks
   private onAddCallback: onAddCallback;
   private renderCallback: onRenderCallback;
@@ -93,6 +98,15 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
     if (this.onAddCallback) {
       this.program = this.onAddCallback(map, gl, this.data);
     }
+
+    // Update initial data
+    const rect = map.getContainer().getBoundingClientRect();
+    this.mapWidth = rect.width;
+    this.mapHeight = rect.height;
+
+    // Observe
+    this.observer = new ResizeObserver(() => this.onResize(map));
+    this.observer.observe(map.getContainer());
   }
 
   move() {
@@ -100,6 +114,15 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   }
 
   zoom() {}
+
+  private onResize(map: mapboxgl.Map) {
+    const rect = map.getContainer().getBoundingClientRect();
+    if (rect) {
+      this.mapWidth = rect.width;
+      this.mapHeight = rect.height;
+      this.map?.triggerRepaint();
+    }
+  }
 
   onData(e: any) {
     if (e.sourceDataType === "content") this.updateTiles();
@@ -112,6 +135,7 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
 
   updateData(data: ComparisonLayerData) {
     this.data = data;
+    this.map?.triggerRepaint();
   }
 
   prerender(gl: WebGLRenderingContext, matrix: number[]) {
@@ -138,7 +162,9 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
           //@ts-ignore
           .map((tileid) => this.sourceCache.getTile(tileid)),
         this.program,
-        this.data
+        this.data,
+        this.mapWidth,
+        this.mapHeight
       );
   }
 }
@@ -201,11 +227,13 @@ export function render(
   _: number[],
   tiles: any[],
   program: ComparisonLayerProgram,
-  data: ComparisonLayerData
+  data: ComparisonLayerData,
+  width: number,
+  height: number
 ) {
   gl.useProgram(program);
-  gl.uniform1f(program.uOffsetX, data.offsetX);
-  gl.uniform1f(program.uOffsetY, data.offsetY);
+  gl.uniform1f(program.uOffsetX, data.offsetX * width);
+  gl.uniform1f(program.uOffsetY, data.offsetY * height);
   gl.uniform1f(program.uDevicePixelRatio, window.devicePixelRatio);
   tiles.forEach((tile) => {
     if (!tile.texture) return;

@@ -31,7 +31,7 @@ const map = new mapboxgl.Map({
 });
 
 let data = {
-  offsetX: 500,
+  offsetX: 0,
   offsetY: 0,
 };
 
@@ -60,24 +60,16 @@ inputX?.addEventListener("input", (event) => {
     map.getContainer().getBoundingClientRect().width * value - 3
   );
 
-  data = { offsetX: width, offsetY: data.offsetY };
+  data = { offsetX: value, offsetY: data.offsetY };
 
   layer.updateData(data);
   divider?.style.setProperty("--left", `${width}px`);
-
-  map.triggerRepaint();
 });
 
 inputY?.addEventListener("input", (event) => {
   const value = (event.target as any).value as number;
-  const height = Math.max(
-    0,
-    map.getContainer().getBoundingClientRect().height * value
-  );
 
-  data = { offsetX: data.offsetX, offsetY: height };
+  data = { offsetX: data.offsetX, offsetY: value };
 
   layer.updateData(data);
-
-  map.triggerRepaint();
 });
