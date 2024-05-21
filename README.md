@@ -15,3 +15,5 @@ However, if you're looking to _just_ compare raster-layers this library can be m
 Therefore you should only pick this library if your goal is to simply compare raster-layers without duplicating maps (or data), otherwise stick to the famous _mapbox-gl-compare_.
 
 ## Referência
+
+Stamen - https://stamen.com/making-a-snappy-raster-map-with-shaders/
