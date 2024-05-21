@@ -14,6 +14,32 @@ However, if you're looking to _just_ compare raster-layers this library can be m
 
 Therefore you should only pick this library if your goal is to simply compare raster-layers without duplicating maps (or data), otherwise stick to the famous _mapbox-gl-compare_.
 
-## Referência
+## Example
+
+```typescript
+const data = {
+  offsetX: 0, // 0..1
+  offsetY: 0, // 0..1
+};
+
+const layer = new ComparisonLayer(
+  "layer01",
+  "source01",
+  {
+    type: "raster",
+    tiles: ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
+  },
+  data
+);
+
+map.once("load", () => {
+  map.addLayer(layer);
+});
+
+// You can update the data
+layer.updateData({ offsetX: 0.6, offsetY: 0.0 });
+```
+
+## Reference
 
 Stamen - https://stamen.com/making-a-snappy-raster-map-with-shaders/
