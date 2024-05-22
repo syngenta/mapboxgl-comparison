@@ -1,5 +1,7 @@
 # mapboxgl-comparison
 
+[![npm version](https://badge.fury.io/js/mapboxgl-comparison.svg)](https://www.npmjs.com/package/mapboxgl-comparison)
+
 The project aims to facilitate creating comparison _raster layer_ maps. This is achieved by using a custom layer implementation to avoid instantiating multiple maps, duplicating data and hindering performance.
 
 This project is unopinated on how and if you want to change the comparison _offset_, check out the examples.
