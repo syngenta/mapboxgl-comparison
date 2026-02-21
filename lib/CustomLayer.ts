@@ -2,12 +2,20 @@ import mapboxgl from "mapbox-gl";
 import vertexSource from "./shaders/vertexShader.ts";
 import fragmentSource from "./shaders/fragmentShader.ts";
 
+/**
+ * Callback fired when the layer is added to the map.
+ * Responsible for setting up WebGL resources and shaders.
+ */
 type onAddCallback = (
   _: mapboxgl.Map,
   gl: WebGLRenderingContext,
   data: ComparisonLayerData
 ) => ComparisonLayerProgram;
 
+/**
+ * Callback fired during each render frame.
+ * Responsible for drawing tiles using the WebGL program.
+ */
 type onRenderCallback = (
   gl: WebGLRenderingContext,
   _: number[],
@@ -18,6 +26,9 @@ type onRenderCallback = (
   height: number
 ) => void;
 
+/**
+ * Extended WebGL program with cached attribute and uniform locations.
+ */
 interface ComparisonLayerProgram extends WebGLProgram {
   aPos: number;
   uMatrix: WebGLUniformLocation | null;
@@ -28,11 +39,34 @@ interface ComparisonLayerProgram extends WebGLProgram {
   vertexBuffer: WebGLBuffer | null;
 }
 
-type ComparisonLayerData = {
+/**
+ * Data object controlling the comparison layer visibility.
+ * @property offsetX - Horizontal offset (0-1), where the overlay becomes visible
+ * @property offsetY - Vertical offset (0-1), where the overlay becomes visible
+ */
+export type ComparisonLayerData = {
   offsetX: number;
   offsetY: number;
 };
 
+/**
+ * A custom Mapbox GL JS layer for comparing raster tile sources.
+ *
+ * This layer overlays a secondary raster source on top of the base map,
+ * using WebGL shaders for efficient rendering. The visible area can be
+ * controlled via offsetX and offsetY properties.
+ *
+ * @example
+ * ```typescript
+ * const layer = new ComparisonLayer(
+ *   "comparison-layer",
+ *   "overlay-source",
+ *   { type: "raster", tiles: ["https://example.com/{z}/{x}/{y}.png"] },
+ *   { offsetX: 0.5, offsetY: 0 }
+ * );
+ * map.addLayer(layer);
+ * ```
+ */
 export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   // References
   private map: mapboxgl.Map | null;
@@ -55,6 +89,17 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
   private renderCallback: onRenderCallback;
   private preRenderCallback?: () => any;
 
+  /**
+   * Creates a new ComparisonLayer instance.
+   *
+   * @param id - Unique identifier for this layer
+   * @param sourceId - Identifier for the raster source to overlay
+   * @param tileJson - Mapbox RasterSource specification for the overlay tiles
+   * @param data - Initial offset configuration (offsetX and offsetY, 0-1 range)
+   * @param onAddCallback - Custom initialization callback (defaults to setupLayer)
+   * @param renderCallback - Custom render callback (defaults to render)
+   * @param preRenderCallback - Optional callback fired before each render
+   */
   constructor(
     id: string,
     sourceId: string,
@@ -133,6 +178,10 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
     this.sourceCache.update(this.map.painter.transform);
   }
 
+  /**
+   * Updates the comparison offset data and triggers a map repaint.
+   * @param data - New offset values (offsetX and offsetY, 0-1 range)
+   */
   updateData(data: ComparisonLayerData) {
     this.data = data;
     this.map?.triggerRepaint();
@@ -167,8 +216,56 @@ export class ComparisonLayer implements mapboxgl.CustomLayerInterface {
         this.mapHeight
       );
   }
+
+  /**
+   * Cleans up resources when the layer is removed from the map.
+   * Removes event listeners, disconnects the ResizeObserver, and cleans up WebGL resources.
+   */
+  onRemove() {
+    if (this.map) {
+      this.map.off("move", this.move.bind(this));
+      this.map.off("zoom", this.zoom.bind(this));
+
+      if (this.tileSource) {
+        //@ts-ignore
+        this.tileSource.off("data", this.onData.bind(this));
+      }
+
+      if (this.map.getSource(this.sourceId)) {
+        this.map.removeSource(this.sourceId);
+      }
+    }
+
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+
+    if (this.gl && this.program) {
+      if (this.program.vertexBuffer) {
+        this.gl.deleteBuffer(this.program.vertexBuffer);
+      }
+      this.gl.deleteProgram(this.program);
+      this.program = null;
+    }
+
+    this.map = null;
+    this.gl = null;
+    this.tileSource = null;
+    this.sourceCache = null;
+  }
 }
 
+/**
+ * Sets up the WebGL program with vertex and fragment shaders.
+ * Creates and configures the shader program used for rendering tiles.
+ *
+ * @param _ - Mapbox map instance (unused)
+ * @param gl - WebGL rendering context
+ * @param data - Initial offset data for shader uniforms
+ * @returns Configured ComparisonLayerProgram with cached locations
+ * @throws Error if shader creation or program linking fails
+ */
 export function setupLayer(
   _: mapboxgl.Map,
   gl: WebGLRenderingContext,
@@ -181,12 +278,26 @@ export function setupLayer(
   gl.shaderSource(vertexShader, vertexSource);
   gl.compileShader(vertexShader);
 
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+    const info = gl.getShaderInfoLog(vertexShader);
+    gl.deleteShader(vertexShader);
+    throw new Error(`[shader] vertex shader compilation failed: ${info}`);
+  }
+
   const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
   if (!fragmentShader) {
+    gl.deleteShader(vertexShader);
     throw new Error("[shader] failed to create fragment shader");
   }
   gl.shaderSource(fragmentShader, fragmentSource);
   gl.compileShader(fragmentShader);
+
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+    const info = gl.getShaderInfoLog(fragmentShader);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+    throw new Error(`[shader] fragment shader compilation failed: ${info}`);
+  }
 
   const program = gl.createProgram() as ComparisonLayerProgram | null;
   if (!program) {
@@ -195,6 +306,15 @@ export function setupLayer(
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
   gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const info = gl.getProgramInfoLog(program);
+    gl.deleteProgram(program);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+    throw new Error(`[program] shader program linking failed: ${info}`);
+  }
+
   gl.validateProgram(program);
 
   program.aPos = gl.getAttribLocation(program, "aPos");
@@ -222,6 +342,18 @@ export function setupLayer(
   return program;
 }
 
+/**
+ * Renders visible tiles using the WebGL program.
+ * Binds textures and draws triangles for each tile within the offset bounds.
+ *
+ * @param gl - WebGL rendering context
+ * @param _ - Transformation matrix (unused)
+ * @param tiles - Array of visible tiles to render
+ * @param program - Compiled WebGL program with cached locations
+ * @param data - Current offset data controlling visibility bounds
+ * @param width - Map container width in pixels
+ * @param height - Map container height in pixels
+ */
 export function render(
   gl: WebGLRenderingContext,
   _: number[],

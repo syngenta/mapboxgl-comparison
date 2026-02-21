@@ -1,47 +1,129 @@
 # mapboxgl-comparison
 
 [![npm version](https://badge.fury.io/js/mapboxgl-comparison.svg)](https://www.npmjs.com/package/mapboxgl-comparison)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The project aims to facilitate creating comparison _raster layer_ maps. This is achieved by using a custom layer implementation to avoid instantiating multiple maps, duplicating data and hindering performance.
+A lightweight, high-performance comparison layer for Mapbox GL JS. Overlay and compare raster tile sources using WebGL shaders — without the overhead of multiple map instances.
 
-This project is unopinated on how and if you want to change the comparison _offset_, check out the examples.
+## Features
 
-![](https://github.com/vinicarra/mapboxgl-comparison/blob/master/example/demo.gif)
+- **Single map instance** — No duplicate maps or data, just efficient shader-based rendering
+- **Dual-axis comparison** — Control visibility via both X and Y offsets
+- **WebGL-powered** — GPU-accelerated rendering for smooth performance
+- **TypeScript support** — Full type definitions included
+- **Framework-agnostic** — Works with vanilla JS, React, Vue, or any framework
 
-## Why should I pick this?
+## Installation
 
-The most famous comparison layer library for mapbox is https://github.com/mapbox/mapbox-gl-compare. It's a great and easy-to-use library to setup and compare two completely different maps.
+```bash
+npm install mapboxgl-comparison mapbox-gl
+```
 
-However, if you're looking to _just_ compare raster-layers this library can be more powerful because it only renders a single map and everything else is handled by shaders.
+## Requirements
 
-Therefore you should only pick this library if your goal is to simply compare raster-layers without duplicating maps (or data), otherwise stick to the famous _mapbox-gl-compare_.
+- **mapbox-gl**: ^3.3.0 or higher
+- Modern browser with WebGL support
 
-## Example
+## Quick Start
 
 ```typescript
-const data = {
-  offsetX: 0, // 0..1
-  offsetY: 0, // 0..1
-};
+import mapboxgl from "mapbox-gl";
+import { ComparisonLayer } from "mapboxgl-comparison";
 
-const layer = new ComparisonLayer(
-  "layer01",
-  "source01",
+mapboxgl.accessToken = "YOUR_MAPBOX_TOKEN";
+
+const map = new mapboxgl.Map({
+  container: "map",
+  style: "mapbox://styles/mapbox/streets-v12",
+  center: [-74.5, 40],
+  zoom: 9,
+});
+
+// Create the comparison layer
+const comparisonLayer = new ComparisonLayer(
+  "comparison-layer",      // Unique layer ID
+  "overlay-source",        // Source ID for the overlay tiles
   {
     type: "raster",
     tiles: ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
   },
-  data
+  { offsetX: 0.5, offsetY: 0 }  // Initial position (0-1 range)
 );
 
+// Add to map
 map.once("load", () => {
-  map.addLayer(layer);
+  map.addLayer(comparisonLayer);
 });
 
-// You can update the data
-layer.updateData({ offsetX: 0.6, offsetY: 0.0 });
+// Update position dynamically
+comparisonLayer.updateData({ offsetX: 0.7, offsetY: 0 });
 ```
 
-## Reference
+## API Reference
 
-Stamen - https://stamen.com/making-a-snappy-raster-map-with-shaders/
+### `ComparisonLayer`
+
+A custom Mapbox GL JS layer for comparing raster tile sources.
+
+#### Constructor
+
+```typescript
+new ComparisonLayer(
+  id: string,              // Unique layer identifier
+  sourceId: string,        // Source ID for overlay tiles
+  tileJson: RasterSource,  // Mapbox raster source specification
+  data: {                  // Initial offset configuration
+    offsetX: number;       // Horizontal offset (0-1)
+    offsetY: number;       // Vertical offset (0-1)
+  }
+)
+```
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `updateData(data)` | Updates the offset values and triggers a repaint |
+| `onRemove()` | Cleans up resources when layer is removed |
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Layer identifier |
+| `sourceId` | `string` | Overlay source identifier |
+| `type` | `"custom"` | Mapbox layer type |
+
+## How It Works
+
+Unlike [mapbox-gl-compare](https://github.com/mapbox/mapbox-gl-compare), which creates two separate map instances, this library uses a single map with a custom WebGL layer. The overlay raster tiles are rendered via fragment shaders, with visibility controlled by `offsetX` and `offsetY` uniforms.
+
+This approach offers:
+
+- **Lower memory usage** — One map instance instead of two
+- **Better performance** — No synchronization overhead between maps
+- **Simpler API** — Just update offset values to control visibility
+
+## Use Cases
+
+- Compare historical vs. current imagery
+- Overlay sensor data on base maps
+- Visualize before/after scenarios
+- Display alternative routing options
+
+## Browser Support
+
+Requires WebGL support. Compatible with all modern browsers:
+
+- Chrome 60+
+- Firefox 55+
+- Safari 11+
+- Edge 79+
+
+## License
+
+MIT © [Vinicius Carra](https://github.com/vinicarra)
+
+## Acknowledgments
+
+Inspired by [Stamen's work on raster map shaders](https://stamen.com/making-a-snappy-raster-map-with-shaders/).
