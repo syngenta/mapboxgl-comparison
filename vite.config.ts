@@ -3,7 +3,7 @@ import { resolve } from "path";
 import dts from "vite-plugin-dts";
 
 export default defineConfig({
-  plugins: [dts({ include: ["lib"] })],
+  plugins: [dts({ include: ["lib"], exclude: ["lib/__tests__"] })],
   build: {
     lib: {
       entry: resolve(__dirname, "lib/main.ts"),

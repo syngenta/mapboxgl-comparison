@@ -1,22 +1,28 @@
 export default `
     precision mediump float;
     varying vec2 vTexCoord;
-    varying float vOffsetX;
-    varying float vOffsetY;
     uniform sampler2D uTexture;
-    uniform float uDevicePixelRatio;
+    // Clip bounds in device pixels (same space as gl_FragCoord), so the
+    // comparison edge is exact on any devicePixelRatio.
+    uniform float uClipX;
+    uniform float uClipY;
+    uniform float uOpacity;
 
     void main() {
-        vec2 canvasCoord = gl_FragCoord.xy;
-        vec4 color = texture2D(uTexture, vTexCoord);
-
-        canvasCoord.x = canvasCoord.x / uDevicePixelRatio;
-        canvasCoord.y = canvasCoord.y / uDevicePixelRatio;
-
-        if (canvasCoord.x > vOffsetX || canvasCoord.y < vOffsetY) {
+        if (gl_FragCoord.x > uClipX || gl_FragCoord.y < uClipY) {
             discard;
         }
 
-        gl_FragColor = vec4(color.rgb, color.a);
+        vec4 color = texture2D(uTexture, vTexCoord);
+
+        // Fully transparent texels (e.g. the padding around bounded raster
+        // tiles) must not write color or depth.
+        if (color.a == 0.0) {
+            discard;
+        }
+
+        // Mapbox raster tile textures are premultiplied, so opacity scales
+        // all four channels.
+        gl_FragColor = color * uOpacity;
     }
 `;

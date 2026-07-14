@@ -69,15 +69,38 @@ A custom Mapbox GL JS layer for comparing raster tile sources.
 
 ```typescript
 new ComparisonLayer(
-  id: string,              // Unique layer identifier
-  sourceId: string,        // Source ID for overlay tiles
-  tileJson: RasterSource,  // Mapbox raster source specification
-  data: {                  // Initial offset configuration
-    offsetX: number;       // Horizontal offset (0-1)
-    offsetY: number;       // Vertical offset (0-1)
+  id: string,                     // Unique layer identifier
+  sourceId: string,               // Source ID for overlay tiles
+  tileJson: RasterSource | null,  // Raster source spec, or null to render an existing source
+  data: {                         // Initial offset configuration
+    offsetX: number;              // Horizontal offset (0-1)
+    offsetY: number;              // Vertical offset (0-1)
+    opacity?: number;             // Overlay opacity (0-1, default 1)
   }
 )
 ```
+
+#### External-source mode
+
+Pass `null` as `tileJson` to render a raster source your app already owns. The
+layer then never calls `addSource`/`removeSource` — it only draws from the
+existing source's tile cache. Keep the source "used" (so mapbox loads and
+updates its tiles) by also adding a regular raster layer with
+`'raster-opacity': 0`:
+
+```typescript
+map.addSource("overlay-source", { type: "raster", tiles: [url] });
+map.addLayer({
+  id: "overlay-loader",
+  type: "raster",
+  source: "overlay-source",
+  paint: { "raster-opacity": 0 },
+});
+map.addLayer(new ComparisonLayer("comparison-layer", "overlay-source", null, { offsetX: 0.5, offsetY: 0 }));
+```
+
+This is the recommended mode for apps whose framework (e.g. react-map-gl)
+owns source lifecycles and restores them across style swaps.
 
 #### Methods
 
@@ -93,6 +116,18 @@ new ComparisonLayer(
 | `id` | `string` | Layer identifier |
 | `sourceId` | `string` | Overlay source identifier |
 | `type` | `"custom"` | Mapbox layer type |
+
+## Rendering notes
+
+- **Alpha blending**: tiles are composited with premultiplied-alpha blending
+  (matching how mapbox uploads raster textures), and fully transparent texels
+  are discarded — bounded tile sources with transparent padding render
+  correctly over the basemap.
+- **Device-pixel clipping**: the comparison edge is computed in device pixels,
+  so it is exact on any `devicePixelRatio` (retina, browser zoom).
+- **Globe projection**: rendering is skipped while the map is in true globe
+  projection (low zoom); above the globe-to-mercator transition zoom the
+  overlay renders normally.
 
 ## How It Works
 
